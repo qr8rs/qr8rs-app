@@ -8,7 +8,7 @@ const appEnv = cfenv.getAppEnv();
 const app = express();
 const http = require('http').Server(app);
 const crypto = require('crypto');
-
+const request = require('request');
 const CloudantDialogStore = require('./CloudantDialogStore');
 const CloudantUserStore = require('./CloudantUserStore');
 const HealthBot = require('./HealthBot');
@@ -83,15 +83,92 @@ app.post('/webhook', function (req, res) {
   }
 })
 
+function receivedMessage(event) {
+  var senderID = event.sender.id;
+  var recipientID = event.recipient.id;
+  var timeOfMessage = event.timestamp;
+  var message = event.message;
+
+  console.log("Received message for user %d and page %d at %d with message:",
+    senderID, recipientID, timeOfMessage);
+  console.log(JSON.stringify(message));
+
+  var messageId = message.mid;
+
+  var messageText = message.text;
+  var messageAttachments = message.attachments;
+
+  if (messageText) {
+
+    // If we receive a text message, check to see if it matches a keyword
+    // and send back the example. Otherwise, just echo the text we received.
+    switch (messageText) {
+      case 'generic':
+        sendGenericMessage(senderID);
+        break;
+
+      default:
+        sendTextMessage(senderID, messageText);
+    }
+  } else if (messageAttachments) {
+    sendTextMessage(senderID, "Message with attachment received");
+  }
+}
+
+function sendGenericMessage(recipientId, messageText) {
+  console.log(receipientId, messageText);
+  // To be expanded in later sections
+}
+
+function sendTextMessage(recipientId, messageText) {
+  healthBot.processMessage(recipientId, messageText).then((reply) => {
+  var messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      text: reply.text
+    }
+  };
+  callSendAPI(messageData);
+  })
+}
 
 
-// start server on the specified port and binding host
-http.listen(appEnv.port, appEnv.bind, () => {
-    console.log("server starting on " + appEnv.url);
+ // this.healthBot.processMessage(messageSender, message)
+ //  .then((reply) => {
+ //      slackBot.postMessage(data.channel, reply.text, {});
+ //  });
 
-    // load environment variables and create an instance of the HealthBot
-    dotenv.config();
-    let healthBot = new HealthBot(
+
+function callSendAPI(messageData) {
+  request({
+    uri: 'https://graph.facebook.com/v2.6/me/messages',
+    qs: { access_token: process.env.MESSENGER_PAGE_TOKEN },
+    method: 'POST',
+    json: messageData
+
+  }, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      var recipientId = body.recipient_id;
+      var messageId = body.message_id;
+
+      console.log("Successfully sent generic message with id %s to recipient %s",
+        messageId, recipientId);
+    } else {
+      console.error("Unable to send message.");
+      console.error(response);
+      console.error(error);
+    }
+  });
+}
+
+
+
+
+dotenv.config();
+
+var healthBot = new HealthBot(
         new CloudantUserStore(process.env.CLOUDANT_URL, process.env.CLOUDANT_USER_DB_NAME),
         new CloudantDialogStore(process.env.CLOUDANT_URL, process.env.CLOUDANT_DIALOG_DB_NAME),
         process.env.CONVERSATION_USERNAME,
@@ -101,29 +178,57 @@ http.listen(appEnv.port, appEnv.bind, () => {
         process.env.FOURSQUARE_CLIENT_SECRET
     );
     // initialize the HealthBot
-    healthBot.init()
-        .then(() => {
-            // create an instance of the WebSocketBotController to handle WebSocket connected clients
-            let webSocketBotController = new WebSocketBotController(healthBot, http);
-            webSocketBotController.start();
-            // if a slack token is defined then create an instance of SlackBotController
-            let messengerToken = process.env.MESSENGER_PAGE_TOKEN;
-            if (messengerToken) {
-                // let FBMessengerController = new FBMessengerController(healthBot, messengerToken);
-                // FBMessengerController.start();
-                // receivedMessage()
-            }
-        })
-        .catch((error) => {
-            console.log(`Error: ${error}`);
-            process.exit();
-        });
+healthBot.init()
+//   .then(() => {
+//             // create an instance of the WebSocketBotController to handle WebSocket connected clients
+//             let webSocketBotController = new WebSocketBotController(healthBot, http);
+//             webSocketBotController.start();
+//             // if a slack token is defined then create an instance of SlackBotController
+//             let messengerToken = process.env.MESSENGER_PAGE_TOKEN;
+//             if (messengerToken) {
+//                 // let FBMessengerController = new FBMessengerController(healthBot, messengerToken);
+//                 // FBMessengerController.start();
+//                 // receivedMessage()
+//             }
+//         })
+//         .catch((error) => {
+//             console.log(`Error: ${error}`);
+//             process.exit();
+// });
+
+// start server on the specified port and binding host
+http.listen(appEnv.port, appEnv.bind, () => {
+    console.log("server starting on " + appEnv.url);
 });
-
-function receivedMessage(event) {
-  // Putting a stub for now, we'll expand it in the following steps
-  console.log("Message data: ", event.message);
-
-}
+    // load environment variables and create an instance of the HealthBot
+    // dotenv.config();
+    // let healthBot = new HealthBot(
+    //     new CloudantUserStore(process.env.CLOUDANT_URL, process.env.CLOUDANT_USER_DB_NAME),
+    //     new CloudantDialogStore(process.env.CLOUDANT_URL, process.env.CLOUDANT_DIALOG_DB_NAME),
+    //     process.env.CONVERSATION_USERNAME,
+    //     process.env.CONVERSATION_PASSWORD,
+    //     process.env.CONVERSATION_WORKSPACE_ID,
+    //     process.env.FOURSQUARE_CLIENT_ID,
+    //     process.env.FOURSQUARE_CLIENT_SECRET
+    // );
+    // // initialize the HealthBot
+    // healthBot.init()
+    //     .then(() => {
+    //         // create an instance of the WebSocketBotController to handle WebSocket connected clients
+    //         let webSocketBotController = new WebSocketBotController(healthBot, http);
+    //         webSocketBotController.start();
+    //         // if a slack token is defined then create an instance of SlackBotController
+    //         let messengerToken = process.env.MESSENGER_PAGE_TOKEN;
+    //         if (messengerToken) {
+    //             // let FBMessengerController = new FBMessengerController(healthBot, messengerToken);
+    //             // FBMessengerController.start();
+    //             // receivedMessage()
+    //         }
+    //     })
+    //     .catch((error) => {
+    //         console.log(`Error: ${error}`);
+    //         process.exit();
+    //     });
+// });
 
 

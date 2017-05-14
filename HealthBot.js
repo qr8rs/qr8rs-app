@@ -94,6 +94,7 @@ class HealthBot {
                     resolve(response);
                 }
             });
+
         });
     }
 
@@ -142,15 +143,21 @@ class HealthBot {
             return Promise.resolve('Please configure Foursquare.');
         }
         // Get the city from the context to be used in the query to Foursquare
-        let query = '';
-        // if (conversationResponse.context.activies) {
 
-        //     query += conversationResponse.context.activies + ' ';
-        // }
-        // query += 'Doctor';
-        if (conversationResponse.context.city) {
-            query += conversationResponse.context.city + ' ';
+        let query = '';
+        if (conversationResponse.context.activities == "sights") {
+            query += 'museum';
+        } else if (conversationResponse.context.activities == "sounds") {
+            query += 'amphitheater';
+        } else if (conversationResponse.context.activities == "tastes") {
+            query += 'food';
+        } else {
+
         }
+
+        // if (conversationResponse.context.city) {
+        //     query += conversationResponse.context.city + ' ';
+        // }
 
         // Get the city entered by the user to be used in the query
         let city = '';
