@@ -108,6 +108,7 @@ class HealthBot {
      */
     handleResponseFromWatsonConversation(message, user, conversationResponse) {
       const action = conversationResponse.context.action;
+      console.log('handleResponseFromWatsonConversation()', action);
                 if (action == "getBudget") {
                     return this.handleSearchQuery(conversationResponse);
                 }
@@ -139,18 +140,22 @@ class HealthBot {
      * @returns {Promise.<string|error>} - The reply to send to the user if fulfilled, or an error if rejected
      */
     handleSearchQuery(conversationResponse) {
+        console.log("handleSearchQuery()");
         if (! this.foursquareClient) {
             return Promise.resolve('Please configure Foursquare.');
         }
         // Get the city from the context to be used in the query to Foursquare
 
         let query = '';
-        if (conversationResponse.context.activities == "sights") {
-            query += 'museum';
-        } else if (conversationResponse.context.activities == "sounds") {
-            query += 'amphitheater';
-        } else if (conversationResponse.context.activities == "tastes") {
-            query += 'food';
+        console.log(conversationResponse.context);
+        console.log('whatCity', conversationResponse.context.whatCity);
+        console.log(JSON.stringify(conversationResponse.context));
+        if (conversationResponse.context.activities == "Sights") {
+            query = 'museum';
+        } else if (conversationResponse.context.activities == "Sounds") {
+            query = 'amphitheater';
+        } else if (conversationResponse.context.activities == "Tastes") {
+            query = 'food';
         } else {
 
         }
@@ -168,7 +173,7 @@ class HealthBot {
                 "near": conversationResponse.context.city,
                 "radius": 5000
             };
-            // console.log(params)
+            console.log(params)
             this.foursquareClient.getVenues(params, function(error, venues) {
                 let reply = '';
                 if (error) {
@@ -177,14 +182,21 @@ class HealthBot {
                 }
                 else {
                     reply = 'Here is what I found:\n';
-                    for (var i=0; i<venues.response.venues.length; i++) {
-                      console.log(JSON.stringify(venues, null, 2))
+
+                    var max_results = venues.response.venues.length;
+                    if (max_results > 5) {
+                        max_results = 5;
+                    }
+                    
+                    for (var i=0; i<max_results; i++) {
+                        console.log(JSON.stringify(venues.response.venues[i], null, 2))
                         if (reply.length > 0) {
                             reply += '\n';
                         }
                         reply += '* ' + venues.response.venues[i].name;
                     }
                 }
+                console.log("reply = ", reply);
                 resolve(reply);
             });
         });
