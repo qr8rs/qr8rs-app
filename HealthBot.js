@@ -2,7 +2,7 @@
 
 const ConversationV1 = require('watson-developer-cloud/conversation/v1');
 const Foursquare = require('foursquarevenues');
- 
+
 class HealthBot {
 
     /**
@@ -96,7 +96,7 @@ class HealthBot {
             });
         });
     }
-    
+
     /**
      * Takes the response from Watson Conversation, performs any additional steps
      * that may be required, and returns the reply that should be sent to the user.
@@ -106,38 +106,15 @@ class HealthBot {
      * @returns {Promise.<string|error>} - The reply to send to the user if fulfilled, or an error if rejected
      */
     handleResponseFromWatsonConversation(message, user, conversationResponse) {
-        // getOrCreateActiveConversationId will retrieve the active conversation
-        // for the current user from our Cloudant log database.
-        // A new conversation doc is created anytime a new conversation is started.
-        // The conversationDocId is store in the Watson Conversation context,
-        // so we can access it every time a new message is received from a user.
-        return this.getOrCreateActiveConversationId(user, conversationResponse)
-            .then(() => {
-                // Every dialog in our workspace has been configured with a custom "action"
-                // that is available in the Watson Conversation context.
-                // In some cases we need to take special steps and return a customized response
-                // for an action - for example, lookup and return a list of doctors (handleFindDoctorByLocationMessage). 
-                // In other cases we'll just return the response configured in the Watson Conversation dialog (handleDefaultMessage).
-                const action = conversationResponse.context.action;
-                if (action == "findDoctorByLocation") {
-                    return this.handleFindDoctorByLocationMessage(conversationResponse);
+      const action = conversationResponse.context.action;
+                if (action == "getBudget") {
+                    return this.handleSearchQuery(conversationResponse);
                 }
                 else {
                     return this.handleDefaultMessage(conversationResponse);
                 }
-            })
-            .then((reply) => {
-                // Finally, we log every action performed as part of the active conversation
-                // in our Cloudant dialog database and return the reply to be sent to the user.
-                this.logDialog(
-                    conversationResponse.context.conversationDocId,
-                    conversationResponse.context.action,
-                    message,
-                    reply
-                );
-                return Promise.resolve(reply);
-            });
-    }
+            }
+
 
     /**
      * The default handler for any message from Watson Conversation that requires no additional steps.
@@ -154,36 +131,29 @@ class HealthBot {
     }
 
     /**
-     * The handler for the findDoctorByLocation action defined in the Watson Conversation dialog.
+     * The handler for the findDoctorBycity action defined in the Watson Conversation dialog.
      * Queries Foursquare for doctors based on the speciality identified by Watson Conversation
-     * and the location entered by the user.
+     * and the city entered by the user.
      * @param {object} conversationResponse - The response from Watson Conversation
      * @returns {Promise.<string|error>} - The reply to send to the user if fulfilled, or an error if rejected
      */
-    handleFindDoctorByLocationMessage(conversationResponse) {
+    handleSearchQuery(conversationResponse) {
         if (! this.foursquareClient) {
             return Promise.resolve('Please configure Foursquare.');
         }
-        // Get the specialty from the context to be used in the query to Foursquare
+        // Get the city from the context to be used in the query to Foursquare
         let query = '';
-        if (conversationResponse.context.specialty) {
-            query += conversationResponse.context.specialty + ' ';
+        if (conversationResponse.context.city) {
+            query += conversationResponse.context.city + ' ';
         }
         query += 'Doctor';
-        // Get the location entered by the user to be used in the query
-        let location = '';
-        for (let i=0; i<conversationResponse.entities.length; i++) {
-            if (conversationResponse.entities[0].entity == 'sys-location') {
-                if (location.length > 0) {
-                    location += ' ';
-                }
-                location += conversationResponse.entities[0].value;
-            }
-        }
+        // Get the city entered by the user to be used in the query
+        let city = '';
+
         return new Promise((resolve, reject) => {
             let params = {
                 "query": query,
-                "near": location,
+                "near": conversationResponse.context.city,
                 "radius": 5000
             };
             this.foursquareClient.getVenues(params, function(error, venues) {
@@ -195,6 +165,7 @@ class HealthBot {
                 else {
                     reply = 'Here is what I found:\n';
                     for (var i=0; i<venues.response.venues.length; i++) {
+                      console.log(JSON.stringify(venues, null, 2))
                         if (reply.length > 0) {
                             reply += '\n';
                         }
@@ -209,7 +180,7 @@ class HealthBot {
     /**
      * Retrieves the user doc stored in the Cloudant database associated with the current user interacting with the bot.
      * First checks if the user is stored in Cloudant. If not, a new user is created in Cloudant.
-     * @param {string} messageSender - The User ID from the messaging platform (Slack ID, or unique ID associated with the WebSocket client) 
+     * @param {string} messageSender - The User ID from the messaging platform (Slack ID, or unique ID associated with the WebSocket client)
      * @returns {Promise.<object|error>} - The user that was retrieved or created if fulfilled, or an error if rejected
      */
     getOrCreateUser(messageSender) {
@@ -232,7 +203,7 @@ class HealthBot {
      * and the ID of the document is associated with the Watson Conversation context.
      * @param {string} user - The user doc associated with the active user
      * @param {object} conversationResponse - The response from Watson Conversation
-     * @returns {Promise.<string|error>} - The ID of the active conversation doc in Cloudant if fulfilled, or an error if rejected 
+     * @returns {Promise.<string|error>} - The ID of the active conversation doc in Cloudant if fulfilled, or an error if rejected
      */
     getOrCreateActiveConversationId(user, conversationResponse) {
         const newConversation = conversationResponse.context.newConversation;
@@ -251,7 +222,7 @@ class HealthBot {
 
     /**
      * Logs the dialog traversed in Watson Conversation by the current user to the Cloudant log database.
-     * @param {string} conversationDocId - The ID of the active conversation doc in Cloudant 
+     * @param {string} conversationDocId - The ID of the active conversation doc in Cloudant
      * @param {string} name - The name of the dialog (action)
      * @param {string} message - The message sent by the user
      * @param {string} reply - The reply sent to the user
