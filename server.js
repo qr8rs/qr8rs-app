@@ -6,7 +6,7 @@ const express = require('express');
 const CloudantDialogStore = require('./CloudantDialogStore');
 const CloudantUserStore = require('./CloudantUserStore');
 const HealthBot = require('./HealthBot');
-const SlackBotController = require('./SlackBotController');
+const FacebookController = require('./FacebookController');
 const WebSocketBotController = require('./WebSocketBotController');
 
 const appEnv = cfenv.getAppEnv();
@@ -25,6 +25,29 @@ app.get('/', function(req, res) {
         webSocketProtocol: appEnv.url.indexOf('http://') == 0 ? 'ws://' : 'wss://'
     });
 });
+
+app.get('/webhook', function (req, res) {
+    if (req.query['hub.verify_token'] === 'BADASS') {
+        res.send(req.query['hub.challenge']);
+    }
+    res.send('Error, wrong validation token');
+})
+
+app.post('/webhook', function (req, res) {
+    messaging_events = req.body.entry[0].messaging;
+    for (i = 0; i < messaging_events.length; i++) {
+        event = req.body.entry[0].messaging[i];
+        sender = event.sender.id;
+        if (event.message && event.message.text) {
+            text = event.message.text;
+            request("https://qr8rs-app.mybluemix.net/text=" + text, function (error, response, body) {
+                sendMessage(sender, body);
+            });
+        }
+    }
+    res.sendStatus(200);
+});
+
 
 // start server on the specified port and binding host
 http.listen(appEnv.port, appEnv.bind, () => {

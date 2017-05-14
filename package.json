@@ -3,7 +3,18 @@
   "version": "1.0.0",
   "description": "I'm bored.",
   "main": "server.js",
-  "dependencies": {},
+  "dependencies": {
+    "cfenv": "1.0.x",
+    "cloudant": "^1.6.2",
+    "dotenv": "^2.0.0",
+    "ejs": "^2.5.5",
+    "express": "4.13.x",
+    "fb-messenger": "^1.1.0",
+    "foursquarevenues": "^3.0.1",
+    "slackbots": "^1.0.2",
+    "watson-developer-cloud": "^2.31.1",
+    "websocket": "^1.0.23"
+  },
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -18,16 +29,5 @@
   "bugs": {
     "url": "https://github.com/qr8rs/qr8rs-app/issues"
   },
-  "homepage": "https://github.com/qr8rs/qr8rs-app#readme",
-    "dependencies": {
-    "cfenv": "1.0.x",
-    "cloudant": "^1.6.2",
-    "dotenv": "^2.0.0",
-    "ejs": "^2.5.5",
-    "express": "4.13.x",
-    "foursquarevenues": "^3.0.1",
-    "slackbots": "^1.0.2",
-    "watson-developer-cloud": "^2.31.1",
-    "websocket": "^1.0.23"
-  }
+  "homepage": "https://github.com/qr8rs/qr8rs-app#readme"
 }

@@ -143,10 +143,15 @@ class HealthBot {
         }
         // Get the city from the context to be used in the query to Foursquare
         let query = '';
+        // if (conversationResponse.context.activies) {
+
+        //     query += conversationResponse.context.activies + ' ';
+        // }
+        // query += 'Doctor';
         if (conversationResponse.context.city) {
             query += conversationResponse.context.city + ' ';
         }
-        query += 'Doctor';
+
         // Get the city entered by the user to be used in the query
         let city = '';
 
@@ -156,6 +161,7 @@ class HealthBot {
                 "near": conversationResponse.context.city,
                 "radius": 5000
             };
+            // console.log(params)
             this.foursquareClient.getVenues(params, function(error, venues) {
                 let reply = '';
                 if (error) {
